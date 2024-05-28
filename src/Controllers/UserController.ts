@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import Post from "../Models/User";
+import Post from "../Models/Post";
 import createError from "http-errors";
 import User from "../Models/User";
 import { Iuser } from "../Types/Iuser";
@@ -197,6 +197,73 @@ export const getUser = async (
           userDetails,
         });
       }
+    }
+  } catch (error) {
+    if (error.isJoi === true) {
+      return next(
+        res.status(400).json({
+          message: "Invalid details provided.",
+        })
+      );
+    }
+    next(error);
+  }
+};
+
+export const getAllUser = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const userDetails = await User.find();
+  console.log(userDetails);
+  if (!userDetails) {
+    res.status(404).json({
+      message: `User id not available`,
+    });
+  } else {
+    res.status(200).json({
+      userDetails,
+    });
+  }
+};
+
+export const topKUser = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    console.log("----");
+    // const getPosts = await Post.find()
+    //   .select("_id title description vote createdAt updatedAt")
+    //   .populate("user", "username name surname");
+
+    const getPosts = await Post.aggregate([
+      {
+        $lookup: {
+          from: "user",
+          localField: "_id",
+          foreignField: "user",
+          as: "user",
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          title: 1,
+          count: { $size: "$user" },
+        },
+      },
+    ]);
+
+    if (!getPosts) {
+      res.status(404).json({
+        message: `no post available`,
+      });
+    } else {
+      console.log(getPosts);
+      res.status(200).json(getPosts);
     }
   } catch (error) {
     if (error.isJoi === true) {
